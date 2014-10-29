@@ -10,11 +10,15 @@ OptionParser.new do |opts|
   opts.on("-v", "--[no-]verbose", "Run verbosely") do |v|
     options[:verbose] = v
   end
-  opts.on("--port P",Integer, "Elasticsearch port number") do |p|
+  opts.on("-p","--port PORT",Integer, "Elasticsearch port number") do |p|
     options[:port] = p
   end
-  opts.on("--host H",String, "Elasticsearch port number") do |h|
+  opts.on("-h","--host HOST",String, "Elasticsearch host") do |h|
     options[:host] = h
+  end
+  opts.on("-s","--snapshot create/delete snapshot_name",[:create,:delete], "Elasticsearch port number") do |a,n|
+    options[:action] = a
+    options[:snapname] = n
   end
 end.parse!
 
