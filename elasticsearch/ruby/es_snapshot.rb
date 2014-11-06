@@ -27,11 +27,7 @@ OptionParser.new do |opts|
 
   opts.on('-s', '--snapshot [snapshotname]', String, 'Create a snapshot.',
     'By default the snapshot name is a timestamp: snapshot-YYYY.MM.dd.HH.SS') do |s|
-    if s.nil?
-      options[:snapshot] = true
-    else
-      options[:snapshot] = s
-    end
+    options[:snapshot] = s.nil? ? true : s
   end
 
   opts.on('-r','--repo REPO', String, 'Name of the repository to snapshot/restore to/from',
@@ -45,11 +41,7 @@ OptionParser.new do |opts|
 
   opts.on('--restore [snapshotname]', 'Restore from snapshot with [snapshotname]',
     'if no [snapshotname] is given the most recent snapshot is restored') do |r|
-    if r.nil?
-      options[:restore] = true
-    else
-      options[:restore] = r
-    end
+    options[:restore] = r.nil? ? true : r
   end
 
   opts.on('--delete', 'Can be used in combination with --snapshot or --repo',
@@ -58,12 +50,12 @@ OptionParser.new do |opts|
   end
 
   opts.on('-l','--list', 'list information about repositories.',
-  'if used in combination with --repo snapshot information is shown') do |l|
+    'if used in combination with --repo snapshot information is shown') do |l|
     options[:list] = l
   end
 
   opts.on('-i','--index INDEX', String, 'Index to snapshot.',
-  'Can be a commaseperated line. If none is given all indexes are snapped') do |l|
+    'Can be a commaseperated line. If none is given all indexes are snapped') do |l|
     options[:index] = l
   end
 
@@ -72,7 +64,6 @@ OptionParser.new do |opts|
     exit
   end
 end.parse!
-
 
 def roller(o)
 
