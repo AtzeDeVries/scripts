@@ -66,105 +66,118 @@ OptionParser.new do |opts|
 end.parse!
 
 def roller(o)
-
-  if not o[:snapshot].nil?
-    if not o[:repo].nil?
-      if o[:snapshot] == true
-        if o[:delete]
-          puts 'ERROR: need snaphot name for deletion'
-          exit(2)
-        else
-          puts "taking snap in repository #{o[:repo]}"
-          time = Time.now
-          stamp = time.strftime("%Y.%m.%d.%H.%M.%S")
-          if not o[:index].nil?
-            data = { 'indices' => o[:index] }
-            snapname = "snapshot-#{o[:index]}-#{stamp}"
-          else
-            data = {}
-            snapname = "snapshot-#{stamp}"
-          end
-          es_put(o[:host],"_snapshot/#{o[:repo]}/#{snapname}?wait_for_completion=true",data,o[:port],o[:verbose])
-        end
-      else
-        if o[:delete]
-          puts "deleting snap with name #{o[:snapshot]} in repository #{o[:repo]}"
-          es_delete(o[:host],"_snapshot/#{o[:repo]}/#{o[:snapshot]}?wait_for_completion=true",o[:port],o[:verbose])
-        else
-          puts "taking snap with name #{o[:snapshot]} in repository #{o[:repo]}"
-          if not o[:index].nil?
-            data = { 'indices' => o[:index] }
-          else
-            data = {}
-          end
-          es_put(o[:host],"_snapshot/#{o[:repo]}/#{o[:snapshot]}?wait_for_completion=true",data,o[:port],o[:verbose])
-        end
-      end
-    else
-      puts 'ERROR: cannot take/delete snap, need repo'
-      exit(2)
-    end
-
+  if not o[:repo].nil? and o[:snapshot] == true and o[:delete] == true
+    puts 'ERROR: need snaphot name for deletion'
+    exit(7)
+  elsif not o[:snapshot].nil? and o[:repo].nil?
+    puts 'ERROR: need repository name for snapshot'
+    exit(7)
+  elsif o[:snapshot] == true and not o[:repo].nil?
+    es_snapshot(o,'AUTO')
+  elsif o[:snapshot].is_a? String and o[:repo].is_a? String
+    es_snapshot(o,'NAMED')
+  elsif o[:snapshot].is_a? String and o[:repo].is_a? String and o[:delete] == true
+    es_snapshot(o,'DELETE')
   elsif not o[:restore].nil?
-    if not o[:repo].nil?
-      if o[:restore] == true
-        puts "restoring snap from repository #{o[:repo]}"
-        snaps = es_get(o[:host],"_snapshot/#{o[:repo]}/_all",o[:port],false)
-        if snaps.empty?
-          puts 'ERROR: no snapshots available'
-          exit(2)
-        else
-          snap = snaps['snapshots'][-1]['snapshot']
-          if not o[:index].nil?
-            data = { 'indices' => o[:index] }
-          else
-            data = {}
-          end
-          es_post(o[:host],"_snapshot/#{o[:repo]}/#{snap}/_restore?wait_for_completion=true",data,o[:port],o[:verbose])
-        end
-      else
-        puts "restore snap with name #{o[:restore]} from repository #{o[:repo]}"
-        if not o[:index].nil?
-          data = { 'indices' => o[:index] }
-        else
-          data = {}
-        end
-        es_post(o[:host],"_snapshot/#{o[:repo]}/#{o[:restore]}/_restore?wait_for_completion=true",data,o[:port],o[:verbose])
-      end
-    else
-      puts 'ERROR: cannot restore, need repo'
-      exit(2)
-    end
-
+    es_restore(o)
   elsif o[:list] == true
-    if not o[:repo].nil?
-      puts "listing all snap from repository #{o[:repo]}"
-      es_get(o[:host],"_snapshot/#{o[:repo]}/_all",o[:port],true)
-    else
-      puts 'listing all repository information'
-      es_get(o[:host],'_snapshot/_all',o[:port],true)
-    end
-
+    es_list(o)
   elsif not o[:repo].nil?
-    if o[:delete]
-      puts "Deleting repository #{o[:repo]}"
-      es_delete(o[:host],"_snapshot/#{o[:repo]}",o[:port],o[:verbose])
-    else
-      if o[:repolocation].nil?
-        puts "ERROR: need repository location for repository creation"
-        exit(2)
-      else
-        puts "Creating repository #{o[:repo]} on location #{o[:repolocation]}"
-        data = {'type' => 'fs', 'settings' => { 'location' => o[:repolocation] , 'compress' => 'false'}}
-        es_put(o[:host],"_snapshot/#{o[:repo]}",data,o[:port],o[:verbose])
-      end
-    end
-
+    es_repo(o)
   else
     puts "run #{$0} --help"
   end
 end
 
+def es_snapshot(o,task)
+  case task
+  ########################################################################################################
+  when 'AUTO'
+    puts "taking snap in repository #{o[:repo]}"
+    time = Time.now
+    stamp = time.strftime("%Y.%m.%d.%H.%M.%S")
+    if not o[:index].nil?
+      data = { 'indices' => o[:index] }
+      snapname = "snapshot-#{o[:index]}-#{stamp}"
+    else
+      data = {}
+      snapname = "snapshot-#{stamp}"
+    end
+    es_put(o[:host],"_snapshot/#{o[:repo]}/#{snapname}?wait_for_completion=true",data,o[:port],o[:verbose])
+  ########################################################################################################
+  when 'NAMED'
+    puts "taking snap with name #{o[:snapshot]} in repository #{o[:repo]}"
+    if not o[:index].nil?
+      data = { 'indices' => o[:index] }
+    else
+      data = {}
+    end
+    es_put(o[:host],"_snapshot/#{o[:repo]}/#{o[:snapshot]}?wait_for_completion=true",data,o[:port],o[:verbose])
+  ########################################################################################################
+  when 'DELETE'
+    puts "deleting snap with name #{o[:snapshot]} in repository #{o[:repo]}"
+    es_delete(o[:host],"_snapshot/#{o[:repo]}/#{o[:snapshot]}?wait_for_completion=true",o[:port],o[:verbose])
+  end
+end
+
+
+def es_restore(o)
+  if not o[:repo].nil?
+    if o[:restore] == true
+      puts "restoring snap from repository #{o[:repo]}"
+      snaps = es_get(o[:host],"_snapshot/#{o[:repo]}/_all",o[:port],false)
+      if snaps.empty?
+        puts 'ERROR: no snapshots available'
+        exit(2)
+      else
+        snap = snaps['snapshots'][-1]['snapshot']
+        if not o[:index].nil?
+          data = { 'indices' => o[:index] }
+        else
+          data = {}
+        end
+        es_post(o[:host],"_snapshot/#{o[:repo]}/#{snap}/_restore?wait_for_completion=true",data,o[:port],o[:verbose])
+      end
+    else
+      puts "restore snap with name #{o[:restore]} from repository #{o[:repo]}"
+      if not o[:index].nil?
+        data = { 'indices' => o[:index] }
+      else
+        data = {}
+      end
+      es_post(o[:host],"_snapshot/#{o[:repo]}/#{o[:restore]}/_restore?wait_for_completion=true",data,o[:port],o[:verbose])
+    end
+  else
+    puts 'ERROR: cannot restore, need repo'
+    exit(2)
+  end
+end
+
+def es_repo(o)
+  if o[:delete]
+    puts "Deleting repository #{o[:repo]}"
+    es_delete(o[:host],"_snapshot/#{o[:repo]}",o[:port],o[:verbose])
+  else
+    if o[:repolocation].nil?
+      puts "ERROR: need repository location for repository creation"
+      exit(2)
+    else
+      puts "Creating repository #{o[:repo]} on location #{o[:repolocation]}"
+      data = {'type' => 'fs', 'settings' => { 'location' => o[:repolocation] , 'compress' => 'false'}}
+      es_put(o[:host],"_snapshot/#{o[:repo]}",data,o[:port],o[:verbose])
+    end
+  end
+end
+
+def es_list(o)
+  if not o[:repo].nil?
+    puts "listing all snap from repository #{o[:repo]}"
+    es_get(o[:host],"_snapshot/#{o[:repo]}/_all",o[:port],true)
+  else
+    puts 'listing all repository information'
+    es_get(o[:host],'_snapshot/_all',o[:port],true)
+  end
+end
 
 def es_get(host,url,port=9200,print=false)
     uri = URI("http://#{host}:#{port}/#{url}")
