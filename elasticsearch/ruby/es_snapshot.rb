@@ -72,9 +72,9 @@ def roller(o)
   elsif not o[:snapshot].nil? and o[:repo].nil?
     puts 'ERROR: need repository name for snapshot'
     exit(7)
-  elsif o[:snapshot] == true and not o[:repo].nil?
+  elsif o[:snapshot] == true and not o[:repo].nil? and not o[:delete] == true
     es_snapshot(o,'AUTO')
-  elsif o[:snapshot].is_a? String and o[:repo].is_a? String
+  elsif o[:snapshot].is_a? String and o[:repo].is_a? String and not o[:delete] == true
     es_snapshot(o,'NAMED')
   elsif o[:snapshot].is_a? String and o[:repo].is_a? String and o[:delete] == true
     es_snapshot(o,'DELETE')
